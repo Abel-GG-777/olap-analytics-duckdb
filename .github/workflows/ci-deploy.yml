@@ -23,7 +23,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests scripts
-      - run: pytest -q
+      - run: python -m pytest -q
       - run: node --check app/static/app.js
       - name: Build production image
         run: docker build -t olap:test .
