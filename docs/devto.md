@@ -117,6 +117,8 @@ Al ejecutar el conjunto completo en mi entorno obtuve:
 
 Verifiqué por HTTP el estado del servicio, la página y una selección de Lima con 15 050 pedidos. Esos números describen una ejecución de mi generador; no son resultados de una empresa. No medí un benchmark de rendimiento ni una carga de producción. La revisión visual mediante el navegador quedó sin completar por una limitación de acceso de la sesión.
 
+También comprobé la construcción Docker y el smoke HTTP del contenedor en Linux mediante [este run exitoso de GitHub Actions](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41328624294). El job de despliegue quedó omitido por falta de configuración de Google Cloud; ese resultado valida las verificaciones y el contenedor, sin demostrar disponibilidad pública.
+
 ## Preparé el despliegue automatizado en Google Cloud
 
 Construí un Dockerfile que instala la aplicación y genera el archivo DuckDB durante el build. El contenedor ejecuta un único proceso Uvicorn como usuario sin privilegios. Cada instancia consulta su propia instantánea de solo lectura, por lo que no necesito un disco persistente compartido para esta demo.
