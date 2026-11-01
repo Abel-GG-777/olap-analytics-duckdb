@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Andes Analytics | DuckDB OLAP</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script></head>
+<body><header><a href="/" class="brand">◈ ANDES <span>ANALYTICS</span></a><span class="badge">DUCKDB · OLAP LAB</span></header>
+<main><section class="intro"><p class="eyebrow">DE LOS DATOS A LAS DECISIONES</p><h1>Una mirada a tu negocio.</h1><p>Explora ventas, descubre tendencias y entiende qué impulsa el margen.</p><div class="notice">Datos sintéticos · Perú · 2024–2025 · Moneda PEN · No representan ventas reales</div></section>
+<form id="filters"><div class="filter-grid">
+<label>Desde<input type="date" name="start" value="2024-01-01" required></label>
+<label>Hasta<input type="date" name="end" value="2025-12-31" required></label>
+<label>Ciudad<select name="city"><option value="">Todas las ciudades</option><option>Lima</option><option>Arequipa</option><option>Cusco</option><option>Trujillo</option></select></label>
+<label>Categoría<select name="category"><option value="">Todas las categorías</option><option>Tecnología</option><option>Hogar</option><option>Moda</option><option>Deportes</option></select></label>
+<label>Canal<select name="channel"><option value="">Todos los canales</option><option>Web</option><option>Tienda</option></select></label>
+<label>Agrupar por<select name="dimension"><option value="city">Ciudad</option><option value="category">Categoría</option><option value="channel">Canal</option></select></label>
+<label>Tiempo<select name="grain"><option value="month">Mes</option><option value="quarter">Trimestre</option><option value="year">Año</option></select></label>
+<button type="submit">Explorar datos ↗</button></div></form>
+<p id="status" role="status" aria-live="polite">Cargando indicadores…</p>
+<section id="results" aria-label="Resultados analíticos">
+<div class="kpis"><article><p>Ingresos</p><strong id="revenue">—</strong><small>Ventas brutas del período</small></article><article><p>Margen bruto</p><strong id="margin">—</strong><small id="profit">Ingresos menos costo</small></article><article><p>Pedidos</p><strong id="orders">—</strong><small id="units">Unidades vendidas</small></article><article><p>Ticket promedio</p><strong id="average">—</strong><small>Ingresos / pedidos</small></article></div>
+<div class="charts"><article class="panel"><div class="panel-head"><h2>Evolución de ingresos</h2><span>DRILL DOWN / ROLL UP</span></div><div id="trend" class="trend"></div><p class="hint">Cada barra representa un período con ventas. Los períodos sin ventas se omiten.</p></article><article class="panel"><div class="panel-head"><h2>Distribución de ventas</h2><span>SLICE & DICE</span></div><div id="groups"></div></article></div>
+<article class="panel"><div class="panel-head"><h2>Detalle y subtotales</h2><span>SQL ROLLUP</span></div><div class="table-scroll"><table><caption>Ingresos por ciudad y categoría, con subtotales y total general</caption><thead><tr><th>Ciudad</th><th>Categoría</th><th class="number">Ingresos (PEN)</th></tr></thead><tbody id="rollup"></tbody></table></div></article></section>
+<footer><span>Motor analítico: DuckDB · Modelo estrella · 60 000 pedidos</span><a href="/docs">Explorar la API ↗</a><a href="https://github.com/Abel-GG-777/olap-analytics-duckdb">Código fuente ↗</a></footer></main></body></html>
