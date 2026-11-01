@@ -8,3 +8,8 @@ docs
 tests
 .env
 gha-creds-*.json
+node_modules
+dist
+.pages-venv
+playwright-report
+test-results
