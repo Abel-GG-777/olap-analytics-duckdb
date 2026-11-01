@@ -107,6 +107,8 @@ Preparé 15 pruebas Python, incluyendo un fixture de dos pedidos con resultados 
 
 También comprobé entradas inválidas, filtros combinados, períodos vacíos, reproducibilidad, lecturas concurrentes e integridad de la instantánea Parquet. Añadí pruebas Chromium para comprobar las consultas reales de DuckDB-Wasm, los filtros del panel y el ancho de la interfaz móvil; su resultado concreto queda registrado en el informe de verificación del repositorio.
 
+Las dos pruebas de Chromium pasaron en [esta ejecución de Actions](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41330796492). Comprobaron los indicadores esperados, el filtro Lima con 15 050 pedidos, los subtotales, las selecciones vacías y una ventana móvil de 390 píxeles sin desbordamiento horizontal del documento.
+
 Con el dataset completo obtuve estos resultados reproducibles:
 
 | Medida | Resultado sintético |

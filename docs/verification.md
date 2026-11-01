@@ -29,3 +29,12 @@ Fecha: 2026-11-01 (America/Lima).
 - Job `verify`: exitoso, incluidas las 14 pruebas, Ruff, sintaxis JavaScript, construcción de la imagen Docker y smoke HTTP del contenedor de producción en Linux.
 - Job `deploy`: `skipped` por ausencia de configuración GCP. El éxito global del run no se presenta como un despliegue.
 - Los primeros runs detectaron una importación de pytest y un reinicio de conexión durante el arranque; se corrigieron antes de este run exitoso.
+
+## Versión gratuita DuckDB-Wasm / Cloudflare
+
+- Código web comprobado en el commit `88b72e5627fe8b2f3a84020429fa1cf004715d08`.
+- [Ejecución de verificación web](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41330796492).
+- Los pasos Python (15 pruebas), Ruff, sintaxis JavaScript y construcción estática pasaron.
+- Las **dos pruebas Chromium pasaron**: indicadores completos (ingresos y utilidad conocidos), conciliación del total de `ROLLUP`, filtros mediante los controles, Lima con 15 050 pedidos, ocho trimestres, selección vacía y ancho móvil de 390 px sin desbordamiento del documento.
+- Los primeros tests web detectaron el selector accesible de ciudad y el ancho mínimo de los gráficos; se corrigieron y el run citado comprobó ambos ajustes.
+- La URL Cloudflare sigue pendiente de que el propietario pulse Save and Deploy y se complete el primer build. No se afirma que el servicio público esté desplegado.
