@@ -100,7 +100,7 @@ En el panel mostré ingresos, margen bruto, pedidos y ticket promedio, además d
 
 ## Comprobé los cálculos antes de interpretar el panel
 
-Preparé 13 pruebas automatizadas. Incluí un fixture pequeño donde conozco el resultado: dos pedidos con ingresos de 100 y 50, costos de 60 y 40, utilidad total de 50 y ticket promedio de 75.
+Preparé 14 pruebas automatizadas. Incluí un fixture pequeño donde conozco el resultado: dos pedidos con ingresos de 100 y 50, costos de 60 y 40, utilidad total de 50 y ticket promedio de 75.
 
 Además concilié la suma por ciudades, la serie temporal y el total de `ROLLUP` contra el KPI general. Comprobé filtros combinados, granularidad, datos vacíos, entradas inválidas, generación reproducible y consultas concurrentes.
 

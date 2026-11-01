@@ -2,6 +2,7 @@
 import json
 import sys
 import time
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -13,7 +14,7 @@ def check(base):
                 health = json.load(r)
             assert health["status"] == "ok" and health["orders"] == 60000
             break
-        except (HTTPError, URLError, TimeoutError):
+        except (HTTPError, URLError, TimeoutError, ConnectionError, HTTPException):
             if attempt == 29:
                 raise
             time.sleep(2)

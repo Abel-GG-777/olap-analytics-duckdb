@@ -65,5 +65,6 @@ Si una revisión falla, inspecciona Cloud Run → Logs y el run de GitHub. Puede
 
 - [Despliegue desde código fuente](https://docs.cloud.google.com/run/docs/deploying-source-code)
 - [Roles de Cloud Run](https://docs.cloud.google.com/run/docs/reference/iam/roles)
+- [Cuenta de servicio de construcción](https://docs.cloud.google.com/run/docs/configuring/services/build-service-account)
 - [Federación para pipelines](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
 - [Acción oficial de autenticación](https://github.com/google-github-actions/auth)
