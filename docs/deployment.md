@@ -1,70 +1,78 @@
-# Despliegue en Google Cloud Run
+# Cloudflare Pages: despliegue gratuito
 
-## Estado y acceso necesario
+El destino del proyecto es **Cloudflare Pages Free**, sirviendo archivos estáticos. DuckDB-Wasm ejecuta las consultas SQL en el navegador. No se necesita Google Cloud, cuenta de facturación, tarjeta, dominio propio, servidor Python ni servicios AWS para el despliegue.
 
-El destino seleccionado es **Google Cloud**, sin componentes de AWS. El despliegue todavía necesita un proyecto GCP con facturación habilitada y una sesión autorizada. No se encontró `gcloud` ni una configuración local de GCP. No existe una URL pública verificada de esta aplicación.
+## Configuración en Cloudflare
 
-Se necesita del propietario: un **project ID de GCP**, facturación activa y permiso para crear cuentas de servicio, configurar IAM/Workload Identity Federation, habilitar APIs y desplegar Cloud Run. No envíes claves privadas al chat. Puedes ejecutar la preparación en Cloud Shell con tu sesión y compartir los identificadores de recursos no secretos.
+En Workers & Pages → Create application → Continue to Pages → Connect GitHub, selecciona el repositorio `Abel-GG-777/olap-analytics-duckdb`.
 
-## Preparación una sola vez
+En **Set up builds and deployments**:
 
-Abre Google Cloud Shell dentro del proyecto autorizado y ejecuta:
-
-```bash
-git clone https://github.com/Abel-GG-777/olap-analytics-duckdb.git
-cd olap-analytics-duckdb
-export PROJECT_ID='TU_PROJECT_ID_REAL'
-export REGION='us-central1'
-bash scripts/setup-gcp.sh
-```
-
-Revisa antes los recursos que crea el script: tres cuentas de servicio (deploy, build y runtime), un pool OIDC y su proveedor. El runtime no recibe roles de proyecto. El builder recibe `roles/run.builder`. El deployer recibe `roles/run.admin`, `roles/run.sourceDeveloper`, `roles/serviceusage.serviceUsageConsumer` y `serviceAccountUser` sobre builder y runtime. `run.admin` permite establecer el acceso público de este servicio y es un permiso amplio dentro del proyecto: usa un proyecto dedicado para el laboratorio. Quien ejecuta el script requiere permisos administrativos, pero GitHub no recibe Owner ni Editor.
-
-La condición OIDC restringe al ID numérico del propietario de GitHub, al repositorio exacto y a `refs/heads/main`. El script se puede reejecutar para completar recursos faltantes; si ya existe un proveedor con otra configuración, inspecciónalo y actualízalo explícitamente, pues el script conserva el existente. Las políticas de la organización pueden impedir invocación pública o federación; deben resolverse en la cuenta, no desactivarse desde el pipeline.
-
-En GitHub → Settings → Secrets and variables → Actions → **Variables**, registra los seis valores impresos por el script:
-
-| Variable | Contenido |
+| Campo | Valor |
 |---|---|
-| `GCP_PROJECT_ID` | Project ID real |
-| `GCP_REGION` | `us-central1` o región elegida |
-| `GCP_WIF_PROVIDER` | Nombre completo `projects/NUM/locations/global/workloadIdentityPools/github-olap/providers/github` |
-| `GCP_DEPLOY_SERVICE_ACCOUNT` | Email de `olap-deployer` |
-| `GCP_BUILD_SERVICE_ACCOUNT` | Email de `olap-builder` |
-| `GCP_RUNTIME_SERVICE_ACCOUNT` | Email de `olap-runtime` |
+| Project name | `olap-analytics-duckdb` |
+| Production branch | `main` |
+| Framework preset | `None` |
+| Build command | `bash scripts/pages-build.sh` |
+| Build output directory | `dist` |
+| Root directory | Dejar vacío; raíz del repositorio |
 
-No son claves privadas. Crea el environment `production` en Settings → Environments; si agregas revisores obligatorios, cada despliegue esperará esa aprobación. Para despliegue automático sin intervención, no configures revisores obligatorios y limita las ramas permitidas a `main`.
+En Environment variables, si no se detectan los archivos de versión, usa `NODE_VERSION=22` y `PYTHON_VERSION=3.12`. El repositorio incluye `.node-version` y `.python-version`.
 
-## Flujo automatizado
+Pulsa **Save and Deploy** después de confirmar que los cambios de la versión web estén publicados en `main`. El proyecto usa únicamente el plan Free y archivos estáticos; no habilites suscripciones de pago, R2 ni funciones de servidor. Cloudflare asignará una URL `pages.dev`; usa la URL que realmente devuelva el despliegue, no una dirección supuesta.
 
-1. Un PR ejecuta las verificaciones y prueba la imagen Docker; no recibe identidad GCP.
-2. Un push a `main` ejecuta las mismas verificaciones.
-3. Solo si pasan y existe `GCP_PROJECT_ID`, GitHub obtiene una identidad temporal OIDC. No se almacenan claves JSON.
-4. `gcloud run deploy --source .` usa Cloud Build y Artifact Registry para construir y servir el Dockerfile en Cloud Run.
-5. La base de datos se genera dentro de la imagen y se usa en modo de solo lectura. El servicio no requiere almacenamiento persistente.
-6. El workflow obtiene `status.url`, verifica `/health`, un filtro analítico y la página principal. Publica la URL comprobada en el resumen de Actions. Si falla el smoke, el workflow falla; no revierte automáticamente la revisión ya desplegada.
+## Qué ejecuta cada cambio
 
-Dispara el primer despliegue desde Actions → Verify and deploy OLAP → Run workflow, rama `main`, después de configurar las variables. Revisa ambos jobs: `verify` y `deploy`. Un job omitido no equivale a un despliegue exitoso.
+La integración nativa de Cloudflare con GitHub despliega cada push a `main`. Antes de producir `dist`, `scripts/pages-build.sh` crea un entorno Python, instala dependencias, ejecuta Ruff y las pruebas de Python, instala las dependencias JavaScript con `npm ci` y construye la aplicación. Un fallo impide completar ese build de Cloudflare.
 
-## Configuración operacional
+GitHub Actions ejecuta además las mismas pruebas, construye la versión estática, instala Chromium y prueba el motor DuckDB-Wasm y los controles del panel. También comprueba la versión FastAPI local dentro de Docker. El artefacto `cloudflare-pages` contiene `dist`.
 
-Un proceso por contenedor, 1 CPU, 1 GiB de memoria, concurrencia 8, mínimo 0 y máximo 2 instancias; timeout 60 segundos. No son resultados de pruebas de carga. El mínimo 0 habilita reducción a cero, con posible arranque en frío. Cloud Build, imágenes, logs y solicitudes pueden generar cargos; configura un presupuesto en tu proyecto. El límite de instancias no es un límite monetario.
+**Límite de la integración:** el despliegue nativo de Cloudflare y Actions son pipelines independientes. El build de Cloudflare está condicionado a sus verificaciones Python y de construcción; no espera el resultado de las pruebas Chromium ni Docker de Actions. Un fallo de navegador en Actions requiere corregir/revertir el commit. No se presenta esta integración como una promoción condicionada a todos los checks de GitHub.
 
-Para comprobar manualmente desde Cloud Shell:
+## Arquitectura de publicación
+
+1. Python genera el modelo estrella reproducible para desarrollo y validación.
+2. `python -m scripts.export-web` exporta las cuatro tablas a Parquet; se versiona esa instantánea en `web/data`.
+3. El build empaqueta DuckDB-Wasm, workers, estilos, JavaScript y Parquet dentro de `dist`. No usa un CDN externo en tiempo de ejecución.
+4. Los binarios WASM se comprimen en gzip para respetar los 25 MiB por archivo de Pages. El navegador descarga y descomprime el bundle compatible mediante `DecompressionStream` antes de iniciar DuckDB.
+5. Un Web Worker ejecuta consultas con valores parametrizados. La página presenta el resultado. No se consulta una API remota ni se escribe información de usuarios.
+
+El código npm de DuckDB-Wasm usa una versión fijada; puede incorporar una versión del motor distinta del paquete Python. Parquet es el formato de intercambio y las pruebas concilian los indicadores, en lugar de asumir que el archivo nativo de una versión se abre en otra.
+
+La primera carga descarga aproximadamente 7–9 MiB de motor comprimido más el worker, la aplicación y alrededor de 0,85 MiB de hechos. Esto depende del bundle seleccionado. Se necesita un navegador moderno con WebAssembly y `DecompressionStream`; el cálculo usa memoria y CPU del dispositivo del visitante. No se promete capacidad para datasets arbitrariamente grandes.
+
+## Ejecución y pruebas locales
 
 ```bash
-URL=$(gcloud run services describe olap-analytics-duckdb --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')
-python3 scripts/smoke.py "$URL"
+npm ci
+npm run build
+npm run preview
 ```
 
-Tras verificar, incorpora esa URL real al README y al artículo, y registra el enlace del run exitoso en `docs/verification.md`.
+Abre http://127.0.0.1:4173. No necesitas Python para ejecutar esta versión con la instantánea ya versionada. Para ejecutar pruebas del navegador:
 
-Si una revisión falla, inspecciona Cloud Run → Logs y el run de GitHub. Puedes revertir el código mediante un nuevo commit o dirigir tráfico a una revisión anterior sana desde Cloud Run. Para detener costos de ejecución, elimina el servicio desde la consola; las imágenes almacenadas y otros recursos pueden seguir generando costos hasta que los elimines.
+```bash
+npx playwright install chromium
+npm run test:web
+```
 
-## Fuentes oficiales consultadas
+Con una URL de despliegue real, `APP_URL` permite ejecutar las mismas pruebas contra producción. En PowerShell:
 
-- [Despliegue desde código fuente](https://docs.cloud.google.com/run/docs/deploying-source-code)
-- [Roles de Cloud Run](https://docs.cloud.google.com/run/docs/reference/iam/roles)
-- [Cuenta de servicio de construcción](https://docs.cloud.google.com/run/docs/configuring/services/build-service-account)
-- [Federación para pipelines](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
-- [Acción oficial de autenticación](https://github.com/google-github-actions/auth)
+```powershell
+$env:APP_URL='URL_REAL_DEVUELTA_POR_CLOUDFLARE'
+npm.cmd run test:web
+```
+
+El smoke Python `scripts/smoke.py` corresponde a la API FastAPI local y no se utiliza contra la publicación estática.
+
+## Costo y límites
+
+El diseño usa solo archivos estáticos del plan Free. No requiere comprar dominio: utiliza `pages.dev`. El plan tiene límites (por ejemplo, builds por mes y tamaño por archivo); no contrates ampliaciones. Si alcanzas un límite, espera su renovación o reduce uso dentro del plan gratuito. Consulta las condiciones vigentes de tu cuenta.
+
+## Fuentes oficiales
+
+- [Configuración de construcción](https://developers.cloudflare.com/pages/configuration/build-configuration/)
+- [Límites de Pages](https://developers.cloudflare.com/pages/platform/limits/)
+- [DuckDB-Wasm](https://duckdb.org/docs/stable/clients/wasm/overview)
+
+La URL y el resultado real de publicación se registran en `docs/verification.md` al verificarse. Crear el proyecto o terminar un build no demuestra por sí solo que las consultas funcionen en la página pública.

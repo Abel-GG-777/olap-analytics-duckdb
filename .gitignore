@@ -6,3 +6,8 @@ data/
 *.egg-info/
 .env
 gha-creds-*.json
+node_modules/
+dist/
+playwright-report/
+test-results/
+.pages-venv/

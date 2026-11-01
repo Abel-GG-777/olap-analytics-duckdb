@@ -1,51 +1,53 @@
 ---
-title: "Construí un laboratorio OLAP con DuckDB: de un modelo estrella a un panel web"
+title: "Construí un panel OLAP con DuckDB que consulta datos en el navegador"
 published: false
-description: "Mi implementación de un panel analítico con DuckDB, FastAPI, SQL OLAP y un pipeline preparado para Google Cloud Run."
+description: "Mi laboratorio OLAP con modelo estrella, Parquet, DuckDB-Wasm y un despliegue estático gratuito en Cloudflare Pages."
 tags: duckdb, python, sql, webdev
 ---
 
-Quería construir un proyecto individual de datos que pudiera ejecutar, entender y compartir completo. Elegí una pregunta concreta: **¿cómo puedo explorar ingresos y margen de un negocio minorista sin montar un servidor de base de datos dedicado?**
+Quería construir un proyecto individual que cubriera todo el recorrido de una solución analítica: generar datos, modelarlos, escribir SQL, crear una interfaz y preparar su publicación. También tenía una restricción concreta: no quería pagar un servidor ni usar AWS.
 
-Mi respuesta fue Andes Analytics: un pequeño laboratorio OLAP con DuckDB, una API en FastAPI y un panel web. Publiqué el código en [olap-analytics-duckdb](https://github.com/Abel-GG-777/olap-analytics-duckdb).
+Construí **Andes Analytics**, un laboratorio para explorar ventas minoristas sintéticas en Perú. El código está en [mi repositorio público](https://github.com/Abel-GG-777/olap-analytics-duckdb).
 
-El alojamiento que elegí es Google Cloud Run. En esta versión del artículo todavía no tengo un despliegue público verificado: dejé el contenedor y el pipeline preparados, pero necesito habilitar el proyecto de Google Cloud y su identidad de despliegue. Por eso no incluyo un enlace de aplicación que no pueda comprobar. Tampoco utilizo AWS en la arquitectura.
+La decisión que hizo viable la publicación estática fue ejecutar DuckDB en el navegador con WebAssembly. Conservé además una versión local con FastAPI para estudiar la alternativa con backend. La guía de despliegue usa Cloudflare Pages Free; al escribir esta versión todavía estoy completando la configuración de la cuenta y no tengo una URL pública verificada. No presento una dirección supuesta como una aplicación desplegada.
 
-## Primero definí el problema y los datos
+## Definí un problema que pudiera comprobar
 
-Quise responder preguntas habituales: qué ciudad concentra ingresos, qué categoría aporta utilidad y cómo cambia la venta entre meses, trimestres y años. Ese dominio me permitió enseñar operaciones OLAP con indicadores fáciles de interpretar.
+Elegí preguntas de ventas: ¿qué ciudad concentra ingresos?, ¿qué categoría aporta utilidad?, ¿cómo cambia el resultado entre meses, trimestres y años? Son preguntas comprensibles y permiten demostrar operaciones OLAP sin depender de un dominio demasiado especializado.
 
-Para hacer reproducible el proyecto generé **60 000 pedidos sintéticos**, entre enero de 2024 y diciembre de 2025. Usé cuatro ciudades peruanas —Lima, Arequipa, Cusco y Trujillo—, cuatro categorías y los canales Web y Tienda. La moneda es el sol peruano.
+Generé 60 000 pedidos, entre 2024 y 2025, con cuatro ciudades, cuatro categorías, dos canales y moneda PEN. Usé Python con `random.Random(42)` y versioné la definición como `retail-v1-seed42`.
 
-La fuente es mi generador Python, con `random.Random(42)` y versión `retail-v1-seed42`. No son ventas reales ni estadísticas oficiales. Muestreé las dimensiones y las fechas sin diseñar una estacionalidad comercial; no interpreto las diferencias resultantes como evidencia sobre el mercado peruano.
+Los datos son sintéticos. No representan ventas reales ni estadísticas oficiales de Perú. Tampoco diseñé una estacionalidad comercial: muestreé fechas y dimensiones para disponer de un conjunto reproducible, no para inferir comportamiento económico.
 
-Tomé además una decisión de modelado: cada fila representa un pedido de una sola categoría. No modelé líneas de pedido, devoluciones ni impuestos. Esa simplificación hace que `count(*)` sea un conteo de pedidos válido dentro de este laboratorio.
+Definí el grano como un pedido de una sola categoría. No incluí líneas de pedido, devoluciones, impuestos ni descuentos. Así, `count(*)` representa pedidos dentro de este modelo.
 
 ## Por qué elegí DuckDB
 
-Me interesaba trabajar con SQL analítico dentro de mi aplicación Python. DuckDB me permitió almacenar la instantánea en un archivo, unir dimensiones, agregar medidas y ejecutar ventanas analíticas sin administrar un servicio de base de datos separado.
+Quería trabajar con SQL analítico sin administrar un servidor de base de datos dedicado. DuckDB me permitió unir dimensiones, agregar medidas y utilizar ventanas analíticas desde Python. DuckDB-Wasm llevó esas consultas al navegador del visitante.
 
-No elegí el motor a partir de un benchmark propio contra otras bases. Mi objetivo era reducir los componentes de una demostración reproducible y concentrarme en el modelado y las consultas. La [documentación de DuckDB para Python](https://duckdb.org/docs/current/clients/python/overview) fue mi referencia para integrarlo.
+No elegí el motor a partir de un benchmark propio contra otros productos. Elegí una herramienta que me permitía construir el laboratorio con pocos componentes y revisar las consultas directamente. Consulté la [documentación de DuckDB-Wasm](https://duckdb.org/docs/stable/clients/wasm/overview) para integrar el motor y su Web Worker.
 
-También tuve que pensar en la concurrencia: abrí conexiones de solo lectura por solicitud y evité compartir una conexión global entre los hilos de la API. No expuse un editor de SQL arbitrario al público.
+## Organicé los datos con un modelo estrella
 
-## Un modelo estrella pequeño
+La tabla `fact_sales` contiene pedido, fecha, ciudad, categoría, canal, unidades, ingresos y costo. Separé el calendario, las ciudades y las categorías en `dim_date`, `dim_city` y `dim_category`. Dejé el canal como una dimensión degenerada en el hecho.
 
-Organicé el almacén alrededor de `fact_sales`, con ingresos, costo, unidades, fecha, ciudad, categoría y canal. Separé ciudad, categoría y calendario en `dim_city`, `dim_category` y `dim_date`. Dejé el canal como dimensión degenerada en la tabla de hechos.
+En Python definí claves primarias y foráneas y almacené los importes como `DECIMAL(14,2)`. Una vista `sales` resuelve las uniones para las consultas.
 
-Una vista llamada `sales` resuelve las uniones para las consultas. Definí claves primarias y foráneas y almacené dinero en `DECIMAL(14,2)`.
+Para la versión web exporté las cuatro tablas a Parquet. Preferí ese intercambio a publicar directamente el archivo nativo de DuckDB, porque el paquete Python y el paquete Wasm pueden incorporar versiones distintas del motor.
 
-El recorrido de una consulta es sencillo:
+La arquitectura de publicación quedó así:
 
 ```text
-Navegador → FastAPI → SQL parametrizado → DuckDB → JSON → panel
+Generador Python → Modelo estrella → Parquet versionado
+                                      ↓
+Cloudflare Pages → Navegador → DuckDB-Wasm en Web Worker → Panel
 ```
 
-Construí el frontend con HTML, CSS y JavaScript sin framework. Serví la página y la API desde el mismo proceso. Para este alcance, evité añadir una compilación frontend y dependencias externas para dibujar los gráficos.
+Cloudflare sirve archivos estáticos. El navegador descarga el motor y el dataset, ejecuta SQL y dibuja los resultados. No necesita llamar a una API para resolver cada filtro.
 
-## Convertí preguntas de negocio en SQL OLAP
+## Traducí las preguntas en SQL OLAP
 
-Para hacer *slice and dice*, combiné período, ciudad, categoría y canal. Por ejemplo, esta consulta agrupa las ventas web de 2025:
+Implementé filtros combinables por ciudad, categoría, canal y rango de fechas. Esta consulta muestra un ejemplo de *slice and dice*:
 
 ```sql
 SELECT city, category,
@@ -60,9 +62,9 @@ GROUP BY city, category
 ORDER BY revenue DESC;
 ```
 
-Calculé el margen dividiendo utilidad total entre ingresos totales. Promediar los porcentajes de margen de cada pedido habría dado otro indicador.
+Calculé el margen a partir de los totales. Promediar el porcentaje de cada pedido habría respondido una pregunta diferente.
 
-Para mostrar detalle, subtotal por ciudad y total general usé `ROLLUP`:
+Para el detalle por ciudad y categoría, el subtotal de cada ciudad y el total general, usé `ROLLUP`:
 
 ```sql
 SELECT city, category,
@@ -73,9 +75,9 @@ FROM sales
 GROUP BY ROLLUP(city, category);
 ```
 
-Usé `grouping()` para identificar los subtotales explícitamente. Así pude presentar filas de total en el panel sin confundirlas con valores ausentes del dato original.
+Usé `grouping()` para identificar los subtotales. En la interfaz puedo etiquetarlos sin confundirlos con un dato faltante.
 
-Para explorar la jerarquía temporal cambié la granularidad entre mes, trimestre y año. Añadí una ventana para comparar períodos:
+Para explorar el calendario, cambié la granularidad entre mes, trimestre y año. Añadí una ventana para comparar períodos:
 
 ```sql
 WITH periods AS (
@@ -84,29 +86,30 @@ WITH periods AS (
   FROM sales
   GROUP BY 1
 )
-SELECT *,
-       revenue - lag(revenue) OVER (ORDER BY period) AS change
+SELECT *, revenue - lag(revenue) OVER (ORDER BY period) AS change
 FROM periods
 ORDER BY period;
 ```
 
-Documenté una precisión: la serie omite períodos sin ventas. Por eso `lag` compara con el período anterior presente, que no necesariamente es el mes calendario anterior bajo cualquier filtro. El primer período devuelve `null` para la variación.
+Documenté una limitación: la serie omite períodos sin ventas. Por eso `lag` compara con el período anterior presente bajo el filtro, que no siempre es el mes calendario anterior. El primer período devuelve `null`.
 
-## Implementé filtros y estados visibles
+## Construí un panel pequeño y comprobable
 
-En `/api/analytics` acepté fechas, ciudad, categoría, canal, dimensión y granularidad. Envié los valores mediante parámetros SQL y restringí los identificadores dinámicos a listas permitidas. Una dimensión desconocida o un rango invertido recibe un error de validación.
+Usé HTML, CSS y JavaScript para mostrar ingresos, margen bruto, pedidos, ticket promedio, tendencias y una tabla de subtotales. Incluí estados de carga, selección vacía y error.
 
-En el panel mostré ingresos, margen bruto, pedidos y ticket promedio, además de una serie temporal, una distribución por dimensión y una tabla de subtotales. Incluí estados de carga, error y selección vacía. Al consultar otra selección oculté los resultados previos para evitar que alguien los confundiera con el nuevo filtro.
+La primera visita descarga DuckDB-Wasm y los datos. Comprimí los binarios WASM y los descomprimí en el navegador para respetar el límite de tamaño por archivo de Cloudflare Pages. Serví el motor, sus workers y el dataset desde el mismo sitio, sin un CDN externo en tiempo de ejecución.
 
-## Comprobé los cálculos antes de interpretar el panel
+Las consultas usan parámetros para los valores y listas permitidas para las dimensiones y granularidades. No expuse un editor público de SQL arbitrario. Las operaciones se ejecutan en un Web Worker para separar el trabajo analítico del hilo que dibuja la interfaz.
 
-Preparé 14 pruebas automatizadas. Incluí un fixture pequeño donde conozco el resultado: dos pedidos con ingresos de 100 y 50, costos de 60 y 40, utilidad total de 50 y ticket promedio de 75.
+## Verifiqué indicadores e integridad
 
-Además concilié la suma por ciudades, la serie temporal y el total de `ROLLUP` contra el KPI general. Comprobé filtros combinados, granularidad, datos vacíos, entradas inválidas, generación reproducible y consultas concurrentes.
+Preparé 15 pruebas Python, incluyendo un fixture de dos pedidos con resultados conocidos: ingresos de 150, utilidad de 50 y ticket promedio de 75. Concilié las agregaciones por dimensión, la serie temporal y el total de `ROLLUP` contra el KPI general.
 
-Al ejecutar el conjunto completo en mi entorno obtuve:
+También comprobé entradas inválidas, filtros combinados, períodos vacíos, reproducibilidad, lecturas concurrentes e integridad de la instantánea Parquet. Añadí pruebas Chromium para comprobar las consultas reales de DuckDB-Wasm, los filtros del panel y el ancho de la interfaz móvil; su resultado concreto queda registrado en el informe de verificación del repositorio.
 
-| Medida | Resultado del dataset sintético |
+Con el dataset completo obtuve estos resultados reproducibles:
+
+| Medida | Resultado sintético |
 |---|---:|
 | Pedidos | 60 000 |
 | Unidades | 180 281 |
@@ -115,28 +118,24 @@ Al ejecutar el conjunto completo en mi entorno obtuve:
 | Ticket promedio | S/ 369,28 |
 | Margen bruto | 32,45 % |
 
-Verifiqué por HTTP el estado del servicio, la página y una selección de Lima con 15 050 pedidos. Esos números describen una ejecución de mi generador; no son resultados de una empresa. No medí un benchmark de rendimiento ni una carga de producción. La revisión visual mediante el navegador quedó sin completar por una limitación de acceso de la sesión.
+Estos resultados describen mi generador. No son cifras de una empresa ni una evaluación de rendimiento. No hice una prueba de carga y no prometo que el navegador pueda procesar datasets arbitrariamente grandes.
 
-También comprobé la construcción Docker y el smoke HTTP del contenedor en Linux mediante [este run exitoso de GitHub Actions](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41328624294). El job de despliegue quedó omitido por falta de configuración de Google Cloud; ese resultado valida las verificaciones y el contenedor, sin demostrar disponibilidad pública.
+## Preparé la automatización gratuita
 
-## Preparé el despliegue automatizado en Google Cloud
+Conecté el procedimiento de publicación a la integración de GitHub con Cloudflare Pages. La configuración utiliza `main`, el comando `bash scripts/pages-build.sh` y la salida `dist`.
 
-Construí un Dockerfile que instala la aplicación y genera el archivo DuckDB durante el build. El contenedor ejecuta un único proceso Uvicorn como usuario sin privilegios. Cada instancia consulta su propia instantánea de solo lectura, por lo que no necesito un disco persistente compartido para esta demo.
+Ese comando ejecuta las pruebas Python y Ruff antes de construir los archivos estáticos. Por separado, GitHub Actions ejecuta las pruebas Python, construye el sitio, prueba DuckDB-Wasm en Chromium y verifica la versión local con Docker.
 
-Preparé un workflow de GitHub Actions con dos etapas. La primera ejecuta Ruff, pytest, la comprobación de sintaxis JavaScript, la construcción Docker y un smoke test HTTP contra el contenedor. La segunda depende de esas verificaciones y, desde `main`, despliega con `gcloud run deploy --source .`.
+Hice explícita una distinción: el despliegue nativo de Cloudflare no espera a que terminen los checks Chromium de Actions. Sí falla si fallan las verificaciones incluidas en su propio comando de construcción. No presento ambos pipelines independientes como un único proceso de promoción condicionado a todos los checks.
 
-Elegí Workload Identity Federation para obtener credenciales temporales, con una condición que restringe propietario, repositorio y rama. Separé las cuentas de despliegue, construcción y ejecución. Después del despliegue, el workflow consulta la URL real y ejecuta otro smoke test.
-
-Dejé la configuración en [la guía de despliegue](https://github.com/Abel-GG-777/olap-analytics-duckdb/blob/main/docs/deployment.md). Si no existe la variable `GCP_PROJECT_ID`, el job de despliegue se omite. Hice explícita esta condición porque una ejecución verde de las pruebas no significa que la aplicación esté publicada.
-
-El paso pendiente es configurar un proyecto GCP con facturación y permisos, registrar las variables OIDC y ejecutar el primer despliegue. No afirmo haber comprobado Cloud Run mientras ese paso siga pendiente.
+Dejé los pasos exactos en [la guía de despliegue](https://github.com/Abel-GG-777/olap-analytics-duckdb/blob/main/docs/deployment.md). La publicación usa el plan gratuito y el dominio `pages.dev`, sin contratar un dominio propio ni activar servicios de pago. Los límites del plan siguen aplicando.
 
 ## Lo que aprendí
 
-Aprendí que definir el grano del hecho es tan importante como escribir una consulta. Si hubiera mezclado pedidos y líneas de pedido, habría presentado un ticket promedio incorrecto con una interfaz aparentemente convincente.
+Aprendí que una restricción de costo puede cambiar la arquitectura. Al mover el motor al navegador eliminé el servidor de consultas del despliegue, pero trasladé al visitante la descarga inicial y el consumo de memoria y CPU.
 
-También aprendí a separar la integridad del modelo, la exactitud del indicador y la disponibilidad del servicio. Una prueba con resultados conocidos me dio evidencia de los cálculos; una petición HTTP me dio evidencia de la API; ninguna de las dos demuestra por sí sola que exista un despliegue público.
+También aprendí a separar el modelo de su representación de intercambio. El mismo conjunto de datos sirve para una API Python y para DuckDB-Wasm mediante Parquet, mientras las pruebas comprueban que ambos recorridos mantienen los indicadores esperados.
 
-Mi siguiente iteración sería incorporar una fuente real con licencia clara, validar su calidad, versionar instantáneas y medir latencia y costo bajo una carga representativa. Para datos privados añadiría autenticación antes de abrir el servicio.
+Mi siguiente iteración sería incorporar una fuente real con licencia clara, medir carga inicial y memoria en dispositivos modestos y definir cómo actualizar la instantánea. Para información privada tendría que replantear la distribución: los archivos publicados se descargan al navegador y no deben contener secretos.
 
-El código, las consultas y las instrucciones para reproducir el laboratorio están en [mi repositorio público](https://github.com/Abel-GG-777/olap-analytics-duckdb). Dejé el estado de verificación documentado para que cualquier lector pueda distinguir lo probado de lo pendiente.
+El [repositorio](https://github.com/Abel-GG-777/olap-analytics-duckdb) incluye código, consultas, pruebas, ejecución local y un informe que distingue lo comprobado de lo pendiente. Esa separación forma parte del proyecto tanto como el panel.

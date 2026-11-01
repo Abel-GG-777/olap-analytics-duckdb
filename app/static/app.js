@@ -8,13 +8,18 @@ function element(tag, text, className) {
 async function load(event) {
   if (event) event.preventDefault();
   const button = document.querySelector('button'); button.disabled = true;
-  $('status').textContent = 'Consultando DuckDB…'; $('results').hidden = true;
+  $('status').textContent = globalThis.olapAnalytics ? 'Preparando DuckDB en tu navegador… La primera carga descarga el motor y los datos.' : 'Consultando DuckDB…'; $('results').hidden = true;
   const params = new URLSearchParams();
   for (const [key,value] of new FormData($('filters'))) if (value) params.set(key,value);
   try {
-    const response = await fetch('/api/analytics?' + params);
-    if (!response.ok) throw new Error(response.status === 422 ? 'Revisa el rango de fechas y los filtros.' : 'No se pudo consultar el servidor.');
-    const data = await response.json(), s = data.summary;
+    let data;
+    if (globalThis.olapAnalytics) data = await globalThis.olapAnalytics(params);
+    else {
+      const response = await fetch('/api/analytics?' + params);
+      if (!response.ok) throw new Error(response.status === 422 ? 'Revisa el rango de fechas y los filtros.' : 'No se pudo consultar el servidor.');
+      data = await response.json();
+    }
+    const s = data.summary;
     $('revenue').textContent = money(s.revenue); $('margin').textContent = number(Number(s.margin.toFixed(2))) + ' %';
     $('profit').textContent = money(s.profit) + ' de utilidad bruta'; $('orders').textContent = number(s.orders);
     $('units').textContent = number(s.units) + ' unidades vendidas'; $('average').textContent = money(s.average_order);

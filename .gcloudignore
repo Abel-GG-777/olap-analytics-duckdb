@@ -1,9 +1,0 @@
-.gcloudignore
-.git
-.venv
-data
-__pycache__
-.pytest_cache
-.ruff_cache
-.env
-gha-creds-*.json
