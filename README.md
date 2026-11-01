@@ -3,7 +3,7 @@
 Aplicación full stack para explorar ventas minoristas sintéticas en Perú. Permite analizar ingresos, utilidad bruta, margen, pedidos, unidades y ticket promedio mediante filtros, agregaciones temporales y subtotales SQL.
 
 - **Repositorio público:** https://github.com/Abel-GG-777/olap-analytics-duckdb
-- **Aplicación pública:** configuración de Cloudflare Pages en curso; todavía no hay una URL pública verificada.
+- **Aplicación pública:** https://olap-analytics-duckdb.pages.dev — alojada en Cloudflare Pages.
 - **Destino gratuito:** Cloudflare Pages Free, con DuckDB-Wasm ejecutando SQL en el navegador. No requiere tarjeta, proyecto GCP, servidor de pago ni AWS.
 - **Artículo listo para Dev.to:** [docs/devto.md](docs/devto.md).
 - **Estado de verificación:** [docs/verification.md](docs/verification.md).

@@ -17,7 +17,7 @@ Fecha: 2026-11-01 (America/Lima).
 
 - La automatización del navegador del escritorio no obtuvo autorización a tiempo. Las pruebas Chromium automatizadas se incorporaron al workflow remoto; su resultado se registra por separado.
 - Docker no está disponible localmente; la construcción y el smoke del contenedor se ejecutan en el workflow de GitHub. El resultado remoto se registra más abajo.
-- Cloudflare Pages: conexión GitHub autorizada por el propietario y pantalla de configuración abierta. Todavía no se ha confirmado un build ni una URL pública de Cloudflare.
+- Cloudflare Pages: el propietario completó el despliegue. URL pública: https://olap-analytics-duckdb.pages.dev. Se comprobó HTTPS 200, el título del panel, la identificación DuckDB-Wasm y el manifiesto con 60 000 pedidos.
 - Google Cloud Run fue descartado por el requisito de no pagar; se eliminaron el script y el job de despliegue GCP.
 - Dev.to: artículo actualizado para DuckDB-Wasm y Cloudflare en `docs/devto.md`, no publicado. El propietario lo publicará manualmente; no se solicita credencial.
 - No se ejecutó un benchmark ni una prueba de carga. No se afirma latencia ni capacidad de producción.
@@ -37,4 +37,12 @@ Fecha: 2026-11-01 (America/Lima).
 - Los pasos Python (15 pruebas), Ruff, sintaxis JavaScript y construcción estática pasaron.
 - Las **dos pruebas Chromium pasaron**: indicadores completos (ingresos y utilidad conocidos), conciliación del total de `ROLLUP`, filtros mediante los controles, Lima con 15 050 pedidos, ocho trimestres, selección vacía y ancho móvil de 390 px sin desbordamiento del documento.
 - Los primeros tests web detectaron el selector accesible de ciudad y el ancho mínimo de los gráficos; se corrigieron y el run citado comprobó ambos ajustes.
-- La URL Cloudflare sigue pendiente de que el propietario pulse Save and Deploy y se complete el primer build. No se afirma que el servicio público esté desplegado.
+- La URL pública https://olap-analytics-duckdb.pages.dev responde y entrega el panel y los datos. Se agregó `Verify public Cloudflare application`, workflow manual que ejecuta las mismas pruebas Chromium directamente contra producción. Su resultado se registra a continuación al terminar.
+
+## Producción: consultas y controles verificados
+
+- URL comprobada: https://olap-analytics-duckdb.pages.dev.
+- [Run de verificación pública](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41332125428).
+- Paso `Check real production queries and interface`: `success`, con las dos pruebas Chromium ejecutadas contra la URL Cloudflare (no contra un servidor local).
+- Comprobaciones: 60 000 pedidos, ingresos 22 156 502,75 PEN, utilidad 7 189 634,09 PEN, 24 meses, total general de ROLLUP conciliado, filtro Lima con 15 050 pedidos, granularidad trimestral, controles de selección vacía y ventana móvil de 390 px sin desbordamiento del documento.
+- Dev.to queda a cargo del propietario, que eligió publicación manual. El artículo ya incorpora la URL real y la evidencia de producción.

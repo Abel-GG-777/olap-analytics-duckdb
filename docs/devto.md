@@ -9,7 +9,7 @@ Quería construir un proyecto individual que cubriera todo el recorrido de una s
 
 Construí **Andes Analytics**, un laboratorio para explorar ventas minoristas sintéticas en Perú. El código está en [mi repositorio público](https://github.com/Abel-GG-777/olap-analytics-duckdb).
 
-La decisión que hizo viable la publicación estática fue ejecutar DuckDB en el navegador con WebAssembly. Conservé además una versión local con FastAPI para estudiar la alternativa con backend. La guía de despliegue usa Cloudflare Pages Free; al escribir esta versión todavía estoy completando la configuración de la cuenta y no tengo una URL pública verificada. No presento una dirección supuesta como una aplicación desplegada.
+La decisión que hizo viable la publicación estática fue ejecutar DuckDB en el navegador con WebAssembly. Conservé además una versión local con FastAPI para estudiar la alternativa con backend. Publiqué la aplicación en Cloudflare Pages: [abrir Andes Analytics](https://olap-analytics-duckdb.pages.dev). Comprobé que la URL sirve el panel y la instantánea de 60 000 pedidos.
 
 ## Definí un problema que pudiera comprobar
 
@@ -108,6 +108,8 @@ Preparé 15 pruebas Python, incluyendo un fixture de dos pedidos con resultados 
 También comprobé entradas inválidas, filtros combinados, períodos vacíos, reproducibilidad, lecturas concurrentes e integridad de la instantánea Parquet. Añadí pruebas Chromium para comprobar las consultas reales de DuckDB-Wasm, los filtros del panel y el ancho de la interfaz móvil; su resultado concreto queda registrado en el informe de verificación del repositorio.
 
 Las dos pruebas de Chromium pasaron en [esta ejecución de Actions](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41330796492). Comprobaron los indicadores esperados, el filtro Lima con 15 050 pedidos, los subtotales, las selecciones vacías y una ventana móvil de 390 píxeles sin desbordamiento horizontal del documento.
+
+Después del despliegue ejecuté las mismas pruebas contra [la aplicación pública](https://olap-analytics-duckdb.pages.dev), y ambas pasaron. Dejé la evidencia en [el run de verificación de producción](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41332125428). Así comprobé que el motor y los filtros funcionan también con los archivos servidos por Cloudflare.
 
 Con el dataset completo obtuve estos resultados reproducibles:
 

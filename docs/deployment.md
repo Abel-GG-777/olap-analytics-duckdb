@@ -2,6 +2,8 @@
 
 El destino del proyecto es **Cloudflare Pages Free**, sirviendo archivos estáticos. DuckDB-Wasm ejecuta las consultas SQL en el navegador. No se necesita Google Cloud, cuenta de facturación, tarjeta, dominio propio, servidor Python ni servicios AWS para el despliegue.
 
+Aplicación desplegada y comprobada: https://olap-analytics-duckdb.pages.dev. [Pruebas Chromium contra producción](https://github.com/Abel-GG-777/olap-analytics-duckdb/actions/runs/41332125428).
+
 ## Configuración en Cloudflare
 
 En Workers & Pages → Create application → Continue to Pages → Connect GitHub, selecciona el repositorio `Abel-GG-777/olap-analytics-duckdb`.
