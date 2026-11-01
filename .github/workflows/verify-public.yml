@@ -1,0 +1,25 @@
+name: Verify public Cloudflare application
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Check real production queries and interface
+        env:
+          APP_URL: https://olap-analytics-duckdb.pages.dev
+        run: npm run test:web
+      - name: Record verification
+        run: echo 'Verified https://olap-analytics-duckdb.pages.dev with Chromium (queries, filters, rollup, empty selections and mobile layout).' >> "$GITHUB_STEP_SUMMARY"
