@@ -9,6 +9,8 @@ Quería construir un proyecto individual que cubriera todo el recorrido de una s
 
 Construí **Andes Analytics**, un laboratorio para explorar ventas minoristas sintéticas en Perú. El código está en [mi repositorio público](https://github.com/Abel-GG-777/olap-analytics-duckdb).
 
+También preparé una demostración en video: [Andes Analytics: análisis de ventas OLAP con DuckDB | Demo del proyecto](https://youtu.be/g_XhkFMzs7k).
+
 La decisión que hizo viable la publicación estática fue ejecutar DuckDB en el navegador con WebAssembly. Conservé además una versión local con FastAPI para estudiar la alternativa con backend. Publiqué la aplicación en Cloudflare Pages: [abrir Andes Analytics](https://olap-analytics-duckdb.pages.dev). Comprobé que la URL sirve el panel y la instantánea de 60 000 pedidos.
 
 ## Definí un problema que pudiera comprobar
