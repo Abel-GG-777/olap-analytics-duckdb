@@ -3,10 +3,26 @@
 Aplicación full stack para explorar ventas minoristas sintéticas en Perú. Permite analizar ingresos, utilidad bruta, margen, pedidos, unidades y ticket promedio mediante filtros, agregaciones temporales y subtotales SQL.
 
 - **Repositorio público:** https://github.com/Abel-GG-777/olap-analytics-duckdb
-- **Aplicación pública:** pendiente de habilitar el proyecto Google Cloud y ejecutar el primer despliegue. No hay una URL de producción verificada todavía.
-- **Destino de despliegue:** Google Cloud Run, Cloud Build y Artifact Registry. La arquitectura no utiliza AWS.
+- **Aplicación pública:** configuración de Cloudflare Pages en curso; todavía no hay una URL pública verificada.
+- **Destino gratuito:** Cloudflare Pages Free, con DuckDB-Wasm ejecutando SQL en el navegador. No requiere tarjeta, proyecto GCP, servidor de pago ni AWS.
 - **Artículo listo para Dev.to:** [docs/devto.md](docs/devto.md).
 - **Estado de verificación:** [docs/verification.md](docs/verification.md).
+
+## Versión web gratuita (recomendada para publicar)
+
+Requiere Node.js 22 o superior:
+
+```bash
+npm ci
+npm run build
+npm run preview
+```
+
+Abre http://127.0.0.1:4173. El build sirve HTML, CSS, JavaScript, DuckDB-Wasm y una instantánea Parquet versionada en `web/data`. Todas las consultas se ejecutan en un Web Worker dentro del navegador. El sitio no llama a FastAPI en producción y no depende de un CDN externo.
+
+**Cloudflare Pages:** rama `main`, framework `None`, build command `bash scripts/pages-build.sh`, output directory `dist`. [Pasos completos](docs/deployment.md).
+
+Las secciones de FastAPI y Docker describen la versión local opcional del mismo laboratorio. No es necesario alojar ese backend para publicar la versión gratuita.
 
 ## Caso de uso
 
@@ -19,20 +35,21 @@ Los datos son **generados**, no proceden de una empresa ni de estadísticas ofic
 ```mermaid
 flowchart LR
   G[Generador Python reproducible] --> D[(DuckDB: modelo estrella)]
-  U[Navegador: HTML + CSS + JavaScript] --> A[FastAPI /api/analytics]
-  A -->|SQL parametrizado, solo lectura| D
-  H[GitHub main] --> T[Actions: pruebas + contenedor + smoke]
-  T -->|OIDC| B[Google Cloud Build]
-  B --> R[Artifact Registry]
-  R --> C[Google Cloud Run]
-  C --> U
+  D --> P[Parquet versionado]
+  H[GitHub main] --> T[Cloudflare: pruebas Python + build estático]
+  T --> C[Cloudflare Pages Free]
+  P --> C
+  C --> U[Navegador: DuckDB-Wasm + panel]
+  H --> V[Actions: Python + Chromium + Docker local]
 ```
 
-Tecnologías: Python 3.12, DuckDB 2.0.0, FastAPI, Uvicorn, JavaScript sin framework, CSS adaptable, pytest, Ruff, Docker y GitHub Actions. La UI y la API se sirven desde el mismo origen, sin servicios externos para gráficos o fuentes.
+Tecnologías: Python 3.12, DuckDB 2.0.0 para generación y API local, DuckDB-Wasm 1.32.0 para web, Parquet, FastAPI local, Uvicorn, JavaScript, esbuild, CSS adaptable, pytest, Ruff, Playwright/Chromium, Docker y GitHub Actions. El sitio estático sirve motor, workers y datos desde el mismo origen.
 
 Modelo estrella: `fact_sales` tiene grano de **un pedido**; `dim_city`, `dim_category` y `dim_date` aportan dimensiones. `channel` es una dimensión degenerada en la tabla de hechos. La vista `sales` resuelve las uniones. Claves primarias y foráneas protegen la integridad. Importes almacenados como `DECIMAL(14,2)`; el JSON los transforma a números para visualización.
 
-La imagen Docker genera la base antes de desplegar. Cada instancia abre conexiones de solo lectura por solicitud. Un proceso Uvicorn por contenedor evita escritores concurrentes durante el arranque local. No se escribe información de usuarios ni se requiere volumen persistente. Una actualización del generador produce otra instantánea al reconstruir la imagen.
+La versión web carga Parquet en DuckDB-Wasm dentro del navegador; los datos publicados son públicos y descargables. El motor usa recursos del dispositivo del visitante. La primera carga descarga aproximadamente 7–9 MiB de motor comprimido más datos y código. Para regenerar Parquet desde la base Python: `python -m scripts.export-web`; revisa y versiona los archivos resultantes.
+
+La versión local Docker genera su propia base y abre conexiones de solo lectura por solicitud. Un proceso Uvicorn por contenedor evita escritores concurrentes durante el arranque local.
 
 ## Ejecutar localmente
 
@@ -106,9 +123,9 @@ En Linux usa `python`/`ruff` desde el entorno activado. Node se usa solo para co
 
 ## CI/CD y despliegue
 
-[El workflow](.github/workflows/ci-deploy.yml) verifica cada PR y cada cambio en `main`: Ruff, pytest, sintaxis JavaScript, construcción Docker y smoke HTTP del contenedor. El job de despliegue depende de esas verificaciones. Si falta `GCP_PROJECT_ID`, se omite el despliegue explícitamente; una CI verde por sí sola **no** prueba que exista una aplicación pública.
+[El workflow](.github/workflows/ci-deploy.yml) verifica cada PR y cada cambio en `main`: Ruff, pytest, sintaxis JavaScript, build estático, consultas y controles en Chromium, construcción Docker y smoke HTTP de la API local. Para ejecutar las pruebas web: `npx playwright install chromium` y `npm run test:web`.
 
-El despliegue autentica GitHub en Google Cloud mediante OIDC, construye desde el Dockerfile y publica en Cloud Run. Después consulta la URL real y ejecuta el mismo smoke test. Las instrucciones de preparación, permisos, variables y recuperación están en [docs/deployment.md](docs/deployment.md).
+La integración nativa de Cloudflare con GitHub publica `main` usando `bash scripts/pages-build.sh`; ese comando ejecuta Ruff, pruebas Python y la construcción antes de publicar `dist`. El pipeline nativo es independiente de Actions: no espera sus pruebas Chromium/Docker. Una CI verde por sí sola no prueba que exista una aplicación pública. Configuración, límites del plan gratuito y verificación en [docs/deployment.md](docs/deployment.md).
 
 ## Límites y siguientes mejoras
 

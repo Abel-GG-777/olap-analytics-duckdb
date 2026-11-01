@@ -1,0 +1,7 @@
+{
+  "version": "retail-v1-seed42",
+  "orders": 60000,
+  "revenue": 22156502.75,
+  "source": "app/warehouse.py, random.Random(42)",
+  "currency": "PEN"
+}
